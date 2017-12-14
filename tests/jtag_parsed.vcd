@@ -1,7 +1,7 @@
 $date today $end
 $timescale 1 ns $end
-$scope module jtag $end
-$var string 1 0 operation $end
+$scope module parsed $end
+$var string 1 0 jtag $end
 $upscope $end
 $enddefinitions $end
 #0
@@ -11,4 +11,598 @@ $end
 #11
 sidle 0
 #13
+sir=0x4 0
+#39
+sin=0x0,out=0x0 0
+#111
+sidle 0
+#113
+sir=0x4 0
+#139
+sin=0x0,out=0x1 0
+#211
+sidle 0
+#213
+sir=0x4 0
+#239
+sin=0x0,out=0x2 0
+#311
+sidle 0
+#313
+sir=0x4 0
+#339
+sin=0x0,out=0x3 0
+#411
+sidle 0
+#413
+sir=0x4 0
+#439
+sin=0x0,out=0x4 0
+#511
+sidle 0
+#513
+sir=0x4 0
+#539
+sin=0x0,out=0x5 0
+#611
+sidle 0
+#613
+sir=0x4 0
+#639
+sin=0x0,out=0x6 0
+#711
+sidle 0
+#713
+sir=0x4 0
+#739
+sin=0x0,out=0x7 0
+#811
+sidle 0
+#813
+sir=0x4 0
+#839
+sin=0x0,out=0x8 0
+#911
+sidle 0
+#913
+sir=0x4 0
+#939
+sin=0x0,out=0x9 0
+#1011
+sidle 0
+#1013
+sir=0x4 0
+#1039
+sin=0x0,out=0xa 0
+#1111
+sidle 0
+#1113
+sir=0x4 0
+#1139
+sin=0x0,out=0xb 0
+#1211
+sidle 0
+#1213
+sir=0x4 0
+#1239
+sin=0x0,out=0xc 0
+#1311
+sidle 0
+#1313
+sir=0x4 0
+#1339
+sin=0x0,out=0xd 0
+#1411
+sidle 0
+#1413
+sir=0x4 0
+#1439
+sin=0x0,out=0xe 0
+#1511
+sidle 0
+#1513
+sir=0x4 0
+#1539
+sin=0x0,out=0xf 0
+#1611
+sidle 0
+#1613
+sir=0x4 0
+#1639
+sin=0x0,out=0x10 0
+#1711
+sidle 0
+#1713
+sir=0x4 0
+#1739
+sin=0x0,out=0x11 0
+#1811
+sidle 0
+#1813
+sir=0x4 0
+#1839
+sin=0x0,out=0x12 0
+#1911
+sidle 0
+#1913
+sir=0x4 0
+#1939
+sin=0x0,out=0x13 0
+#2011
+sidle 0
+#2013
+sir=0x4 0
+#2039
+sin=0x0,out=0x14 0
+#2111
+sidle 0
+#2113
+sir=0x4 0
+#2139
+sin=0x0,out=0x15 0
+#2211
+sidle 0
+#2213
+sir=0x4 0
+#2239
+sin=0x0,out=0x16 0
+#2311
+sidle 0
+#2313
+sir=0x4 0
+#2339
+sin=0x0,out=0x17 0
+#2411
+sidle 0
+#2413
+sir=0x4 0
+#2439
+sin=0x0,out=0x18 0
+#2511
+sidle 0
+#2513
+sir=0x4 0
+#2539
+sin=0x0,out=0x19 0
+#2611
+sidle 0
+#2613
+sir=0x4 0
+#2639
+sin=0x0,out=0x1a 0
+#2711
+sidle 0
+#2713
+sir=0x4 0
+#2739
+sin=0x0,out=0x1b 0
+#2811
+sidle 0
+#2813
+sir=0x4 0
+#2839
+sin=0x0,out=0x1c 0
+#2911
+sidle 0
+#2913
+sir=0x4 0
+#2939
+sin=0x0,out=0x1d 0
+#3011
+sidle 0
+#3013
+sir=0x4 0
+#3039
+sin=0x0,out=0x1e 0
+#3111
+sidle 0
+#3113
+sir=0x4 0
+#3139
+sin=0x0,out=0x1f 0
+#3211
+sidle 0
+#3213
+sir=0x4 0
+#3239
+sin=0x0,out=0x20 0
+#3311
+sidle 0
+#3313
+sir=0x4 0
+#3339
+sin=0x0,out=0x21 0
+#3411
+sidle 0
+#3413
+sir=0x4 0
+#3439
+sin=0x0,out=0x22 0
+#3511
+sidle 0
+#3513
+sir=0x4 0
+#3539
+sin=0x0,out=0x23 0
+#3611
+sidle 0
+#3613
+sir=0x4 0
+#3639
+sin=0x0,out=0x24 0
+#3711
+sidle 0
+#3713
+sir=0x4 0
+#3739
+sin=0x0,out=0x25 0
+#3811
+sidle 0
+#3813
+sir=0x4 0
+#3839
+sin=0x0,out=0x26 0
+#3911
+sidle 0
+#3913
+sir=0x4 0
+#3939
+sin=0x0,out=0x27 0
+#4011
+sidle 0
+#4013
+sir=0x4 0
+#4039
+sin=0x0,out=0x28 0
+#4111
+sidle 0
+#4113
+sir=0x4 0
+#4139
+sin=0x0,out=0x29 0
+#4211
+sidle 0
+#4213
+sir=0x4 0
+#4239
+sin=0x0,out=0x2a 0
+#4311
+sidle 0
+#4313
+sir=0x4 0
+#4339
+sin=0x0,out=0x2b 0
+#4411
+sidle 0
+#4413
+sir=0x4 0
+#4439
+sin=0x0,out=0x2c 0
+#4511
+sidle 0
+#4513
+sir=0x4 0
+#4539
+sin=0x0,out=0x2d 0
+#4611
+sidle 0
+#4613
+sir=0x4 0
+#4639
+sin=0x0,out=0x2e 0
+#4711
+sidle 0
+#4713
+sir=0x4 0
+#4739
+sin=0x0,out=0x2f 0
+#4811
+sidle 0
+#4813
+sir=0x4 0
+#4839
+sin=0x0,out=0x30 0
+#4911
+sidle 0
+#4913
+sir=0x4 0
+#4939
+sin=0x0,out=0x31 0
+#5011
+sidle 0
+#5013
+sir=0x4 0
+#5039
+sin=0x0,out=0x32 0
+#5111
+sidle 0
+#5113
+sir=0x4 0
+#5139
+sin=0x0,out=0x33 0
+#5211
+sidle 0
+#5213
+sir=0x4 0
+#5239
+sin=0x0,out=0x34 0
+#5311
+sidle 0
+#5313
+sir=0x4 0
+#5339
+sin=0x0,out=0x35 0
+#5411
+sidle 0
+#5413
+sir=0x4 0
+#5439
+sin=0x0,out=0x36 0
+#5511
+sidle 0
+#5513
+sir=0x4 0
+#5539
+sin=0x0,out=0x37 0
+#5611
+sidle 0
+#5613
+sir=0x4 0
+#5639
+sin=0x0,out=0x38 0
+#5711
+sidle 0
+#5713
+sir=0x4 0
+#5739
+sin=0x0,out=0x39 0
+#5811
+sidle 0
+#5813
+sir=0x4 0
+#5839
+sin=0x0,out=0x3a 0
+#5911
+sidle 0
+#5913
+sir=0x4 0
+#5939
+sin=0x0,out=0x3b 0
+#6011
+sidle 0
+#6013
+sir=0x4 0
+#6039
+sin=0x0,out=0x3c 0
+#6111
+sidle 0
+#6113
+sir=0x4 0
+#6139
+sin=0x0,out=0x3d 0
+#6211
+sidle 0
+#6213
+sir=0x4 0
+#6239
+sin=0x0,out=0x3e 0
+#6311
+sidle 0
+#6313
+sir=0x4 0
+#6339
+sin=0x0,out=0x3f 0
+#6411
+sidle 0
+#6413
+sir=0x4 0
+#6439
+sin=0x0,out=0x40 0
+#6511
+sidle 0
+#6513
+sir=0x4 0
+#6539
+sin=0x0,out=0x41 0
+#6611
+sidle 0
+#6613
+sir=0x4 0
+#6639
+sin=0x0,out=0x42 0
+#6711
+sidle 0
+#6713
+sir=0x4 0
+#6739
+sin=0x0,out=0x43 0
+#6811
+sidle 0
+#6813
+sir=0x4 0
+#6839
+sin=0x0,out=0x44 0
+#6911
+sidle 0
+#6913
+sir=0x4 0
+#6939
+sin=0x0,out=0x45 0
+#7011
+sidle 0
+#7013
+sir=0x4 0
+#7039
+sin=0x0,out=0x46 0
+#7111
+sidle 0
+#7113
+sir=0x4 0
+#7139
+sin=0x0,out=0x47 0
+#7211
+sidle 0
+#7213
+sir=0x4 0
+#7239
+sin=0x0,out=0x48 0
+#7311
+sidle 0
+#7313
+sir=0x4 0
+#7339
+sin=0x0,out=0x49 0
+#7411
+sidle 0
+#7413
+sir=0x4 0
+#7439
+sin=0x0,out=0x4a 0
+#7511
+sidle 0
+#7513
+sir=0x4 0
+#7539
+sin=0x0,out=0x4b 0
+#7611
+sidle 0
+#7613
+sir=0x4 0
+#7639
+sin=0x0,out=0x4c 0
+#7711
+sidle 0
+#7713
+sir=0x4 0
+#7739
+sin=0x0,out=0x4d 0
+#7811
+sidle 0
+#7813
+sir=0x4 0
+#7839
+sin=0x0,out=0x4e 0
+#7911
+sidle 0
+#7913
+sir=0x4 0
+#7939
+sin=0x0,out=0x4f 0
+#8011
+sidle 0
+#8013
+sir=0x4 0
+#8039
+sin=0x0,out=0x50 0
+#8111
+sidle 0
+#8113
+sir=0x4 0
+#8139
+sin=0x0,out=0x51 0
+#8211
+sidle 0
+#8213
+sir=0x4 0
+#8239
+sin=0x0,out=0x52 0
+#8311
+sidle 0
+#8313
+sir=0x4 0
+#8339
+sin=0x0,out=0x53 0
+#8411
+sidle 0
+#8413
+sir=0x4 0
+#8439
+sin=0x0,out=0x54 0
+#8511
+sidle 0
+#8513
+sir=0x4 0
+#8539
+sin=0x0,out=0x55 0
+#8611
+sidle 0
+#8613
+sir=0x4 0
+#8639
+sin=0x0,out=0x56 0
+#8711
+sidle 0
+#8713
+sir=0x4 0
+#8739
+sin=0x0,out=0x57 0
+#8811
+sidle 0
+#8813
+sir=0x4 0
+#8839
+sin=0x0,out=0x58 0
+#8911
+sidle 0
+#8913
+sir=0x4 0
+#8939
+sin=0x0,out=0x59 0
+#9011
+sidle 0
+#9013
+sir=0x4 0
+#9039
+sin=0x0,out=0x5a 0
+#9111
+sidle 0
+#9113
+sir=0x4 0
+#9139
+sin=0x0,out=0x5b 0
+#9211
+sidle 0
+#9213
+sir=0x4 0
+#9239
+sin=0x0,out=0x5c 0
+#9311
+sidle 0
+#9313
+sir=0x4 0
+#9339
+sin=0x0,out=0x5d 0
+#9411
+sidle 0
+#9413
+sir=0x4 0
+#9439
+sin=0x0,out=0x5e 0
+#9511
+sidle 0
+#9513
+sir=0x4 0
+#9539
+sin=0x0,out=0x5f 0
+#9611
+sidle 0
+#9613
+sir=0x4 0
+#9639
+sin=0x0,out=0x60 0
+#9711
+sidle 0
+#9713
+sir=0x4 0
+#9739
+sin=0x0,out=0x61 0
+#9811
+sidle 0
+#9813
+sir=0x4 0
+#9839
+sin=0x0,out=0x62 0
+#9911
+sidle 0
+#9913
 sir=0x4 0

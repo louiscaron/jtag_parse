@@ -40,22 +40,22 @@ class JTAGWatcher(watcher.VcdWatcher):
 
         # call the parent method to fill the arrays
         watcher.VcdWatcher.update_ids(self)
-        
+
         # retrieve the id of the TCK signal to speed up
         self.id_tck = self.get_id(self.signame_tck)
-        
+
         # check that the timescale is identical
         assert(self.parser.timescale == self.timescale)
-            
+
 
     def update(self):
-        # Called every time something in the 'sensitivity list' changes 
+        # Called every time something in the 'sensitivity list' changes
         # Doing effective posedge/ negedge checks here and reset/ clock behaviour filtering
 
         # Only update on rising clock edge (clock has changed and is 1)
         if self.id_tck in self.activity and self.get_active_2val(self.signame_tck):
             self.manage_trackers()
-            
+
     def start_tracker(self):
         # extract once for all the TMS ID
         self.id_tms = self.get_id(self.signame_tms)
@@ -73,14 +73,13 @@ class JTAGTracker(tracker.VcdTracker):
     def update(self):
         # retrieve the current state in the watcher and execute state action
         getattr(self, self.watcher.curstate)()
-        print('state = ' + self.watcher.curstate)
 
     def test_logic_reset(self):
         tms = int(self.values[self.watcher.id_tms])
         if tms == 0:
             self.watcher.writer.change(self.watcher.var, self.parser.now, 'idle')
             self.watcher.curstate = 'run_test_idle'
-    
+
     def run_test_idle(self):
         tms = int(self.values[self.watcher.id_tms])
         if tms == 1:
@@ -217,16 +216,18 @@ argparser.add_argument('-s', '--initstate', choices=tap_states, default=tap_stat
     help='initial tap controller state')
 argparser.add_argument('-t', '--timescale', choices=timescales, default='1 ns',
     help='timescale to match input file')
+argparser.add_argument('--scope', default='parsed',
+    help='scope of the jtag signal')
 
 my_args = argparser.parse_args()
 
 vcd = parser.VcdParser()
 
 with VCDWriter(my_args.outfile, timescale=my_args.timescale, date='today') as writer:
-    jtag_v = writer.register_var('jtag', 'operation', 'string', init=my_args.initstate)
+    jtag_v = writer.register_var(my_args.scope, 'jtag', 'string', init=my_args.initstate)
 
     w = JTAGWatcher('capture', my_args.tck, my_args.tms, my_args.tdi, my_args.tdo, my_args.initstate)
-    w.set_writer(writer, my_args.timescale, jtag_v) 
+    w.set_writer(writer, my_args.timescale, jtag_v)
     w.set_tracker(JTAGTracker)
     vcd.register_watcher(w)
 
