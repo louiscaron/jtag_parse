@@ -21,8 +21,8 @@ class JTAGCore(object):
 
     def instruction(self, simtime, iribits, irobits):
         '''Called at the update_ir sampling time.
-        iribits contains the string of bits sampled on TDI, 
-        the first char contains the oldest sample, 
+        iribits contains the string of bits sampled on TDI,
+        the first char contains the oldest sample,
         the last char contains the latest sample
         irobits contains the string of bits sampled on TDO'''
         ir_i = int('0b' + iribits, 0)
@@ -34,6 +34,11 @@ class JTAGCore(object):
         print(str(simtime) + ": instruction NULL")
 
     def data(self, simtime, dribits, drobits):
+        '''Called at the update_dr sampling time.
+        dribits contains the string of bits sampled on TDI,
+        the first char contains the oldest sample,
+        the last char contains the latest sample
+        drobits contains the string of bits sampled on TDO'''
         print(str(simtime) + ": data " + str(len(dribits))+"bits")
         dr_i = hex(int('0b' + dribits, 0))
         dr_o = hex(int('0b' + drobits, 0))
@@ -57,7 +62,48 @@ class silentcore(JTAGCore):
         pass
 
 class e200z0(JTAGCore):
+    def __init__(self, watcher):
+        JTAGCore.__init__(self, watcher)
+
+    def defaultdata(self, simtime, dribits, drobits):
+        JTAGCore.data(self, simtime, dribits, drobits)
+
+    def defaultdata_null(self, simtime):
+        JTAGCore.data_null(self, simtime)
+
+    def CPUSCRreaddata(self, simtime, dribits, drobits):
+        assert (len(dribits) & 0x1F) == 0
+        print ("CPUSCRreaddata len="+str(len(dribits)))
+
+
+        s = "CPUSCRreaddata"
+        self.watcher.writer.change(self.watcher.corevar, simtime, s)
+
+    def CPUSCRwritedata(self, simtime, dribits, drobits):
+        l = len(dribits)
+        assert (l & 0x1F) == 0
+        print("CPUSCRwritedata len="+str(len(dribits)))
+
+        # register chain
+        regs = ['CTL', 'IR', 'PC', 'MSR', 'WBBRhi', 'WBBRlo']
+        # 32 last bits -> CTL
+        # 32 previous last -> IR etc...
+        a = [dribits[i: i + 32] for i in range(0, l, 32)[::-1]]
+        for idx, b in enumerate(a):
+            print('  - {}(w) = '.format(regs[idx]) + b)
+        # 32 first bits -> WBBRlo
+        # 32 next -> WBBRhi etc...
+        a = [drobits[i: i + 32] for i in range(0, l, 32)]
+        for idx, b in enumerate(a[::-1]):
+            print('  - {}(r) = '.format(regs[len(regs) - len(a) + idx]) + b)
+
+        s = "CPUSCRwritedata"
+        self.watcher.writer.change(self.watcher.corevar, simtime, s)
+
     def instruction(self, simtime, iribits, irobits):
+        self.data = self.defaultdata
+        self.data_null = self.defaultdata_null
+
         ir_i = int('0b' + iribits, 0)
         ir_o = int('0b' + irobits, 0)
 
@@ -66,7 +112,7 @@ class e200z0(JTAGCore):
             print(str(simtime) + ': BADLEN instruction ' + str(len(iribits)) + 'bits iri=' + iribits + ' iro=' + irobits)
             self.watcher.writer.change(self.watcher.corevar, simtime, s)
             return
-        
+
         # check the format is correct
         assert irobits[0:2] == '10', 'OnCE status register not compliant: ' + irobits
 
@@ -74,22 +120,28 @@ class e200z0(JTAGCore):
         go = iribits[8]
         ex = iribits[7]
         rs = int('0b' + iribits[7::-1],0)
-        s = 'iri=' + iribits + '(' + hex(ir_i) + ')'
 
+        s = 'OCMD='
         if rw == '1':
-            s += 'R-'
+            s = 'R-'
         else:
-            s += 'W-'
-        if go == '1':
+            s = 'W-'
+        if go == '1' and rs in (0x10, 0x11):
             s += 'GO-'
-        if ex == '1':
-            s += 'EX-'
+
+            # EX is executed only if GO is valid
+            if ex == '1':
+                s += 'EX-'
         if rs == 2:
             s += 'JTAGID'
         elif rs == 0x10:
             s += 'CPUSCR'
+            if rw == '1':
+                self.data = self.CPUSCRreaddata
+            else:
+                self.data = self.CPUSCRwritedata
         elif rs == 0x11:
-            s += 'BYPASS'
+            s += 'NRSBYPASS'
         elif rs == 0x12:
             s += 'OCR'
         elif rs == 0x20:
@@ -120,10 +172,14 @@ class e200z0(JTAGCore):
             s += 'GPREG{}'.format(rs - 0x70)
         elif rs == 0x7C:
             s += 'NEXUSACC'
+        elif rs == 0x7E:
+            s += 'ENABLE_ONCE'
+        elif rs == 0x7F:
+            s += 'BYPASS'
         else:
-            s += '!!!!unsupported"{}"'.format(rs)
+            s += '!!!!{}'.format(rs)
 
-        s += '-iro=' + irobits + '(' + hex(ir_o) + ')'
+        s += '-OSR='
         if ir_o & (1 << 0):
             s += 'MCLKa'
         else:
@@ -146,6 +202,7 @@ class e200z0(JTAGCore):
         print(str(simtime) + ": instruction " + s)
 
         self.watcher.writer.change(self.watcher.corevar, simtime, s)
+
 
 
 available_cores = {'simple':JTAGCore, 'silent':silentcore, 'e200z0':e200z0}
