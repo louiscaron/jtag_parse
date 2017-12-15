@@ -13,10 +13,101 @@ timescales = [a+' '+b for b in ('s','ms','us','ns','ps','fs') for a in ('100','1
 tap_states = ['test_logic_reset','run_test_idle', 'select_dr_scan','capture_dr','shift_dr','exit1_dr','pause_dr','exit2_dr','update_dr',
     'select_ir_scan','capture_ir','shift_ir','exit1_ir','pause_ir','exit2_ir','update_ir']
 
+class JTAGCore(object):
+    '''Base class for JTAG core objects'''
+    def __init__(self):
+        pass
+
+    def instruction(self, simtime, irbits):
+        ir = int('0b' + irbits, 0)
+        s = 'ir=' + irbits + '(' + hex(ir) + ')'
+        print(str(simtime) + ": instruction " + s)
+
+    def instruction_null(self, simtime):
+        print(str(simtime) + ": instruction NULL")
+
+    def data(self, simtime, dribits, drobits):
+        print(str(simtime) + ": data")
+        dr_i = hex(int('0b' + dribits, 0))
+        dr_o = hex(int('0b' + drobits, 0))
+        print('   in : ' + dribits + '(' + dr_i + ')')
+        print('   out: ' + drobits + '(' + dr_o + ')')
+    
+    def data_null(self, simtime):
+        print(str(simtime) + ": data NULL")
+
+class silentcore(JTAGCore):
+    def instruction(self, simtime, irbits):
+        pass
+    
+    def instruction_null(self, simtime):
+        pass
+    
+    def data(self, simtime, dribits, drobits):
+        pass
+    
+    def data_null(self, simtime):
+        pass
+
+class e200z0(JTAGCore):
+    def instruction(self, simtime, irbits):
+        ir = int('0b' + irbits, 0)
+        s = 'ir=' + irbits + '(' + hex(ir) + ')'
+        
+        if ir & (1 << 9):
+            s += ' R-'
+        else:
+            s += ' W-'
+        if ir & (1 << 8):
+            s += 'GO-'
+        if ir & (1 << 7):
+            s += 'EX-'
+        rs = ir & 0x7F
+        if rs == 2:
+            s += 'JTAGID'
+        elif rs == 0x10:
+            s += 'CPUSCR'
+        elif rs == 0x11:
+            s += 'BYPASS'
+        elif rs == 0x12:
+            s += 'OCR'
+        elif rs == 0x20:
+            s += 'IAC1'
+        elif rs == 0x21:
+            s += 'IAC2'
+        elif rs == 0x22:
+            s += 'IAC3'
+        elif rs == 0x23:
+            s += 'IAC4'
+        elif rs == 0x24:
+            s += 'DAC1'
+        elif rs == 0x25:
+            s += 'DAC2'
+        elif rs == 0x2C:
+            s += 'DBCNT'
+        elif rs == 0x30:
+            s += 'DBSR'
+        elif rs == 0x31:
+            s += 'DBCR0'
+        elif rs == 0x32:
+            s += 'DBCR1'
+        elif rs == 0x33:
+            s += 'DBCR2'
+        elif rs == 0x6F:
+            s += 'NEXUSCR'
+        elif rs in range(0x70, 0x7C):
+            s += 'GPREG{}'.format(rs - 0x70)
+        elif rs == 0x7C:
+            s += 'NEXUSACC'
+        else:
+            s += '!!!! unsupported {}'.format(rs)
+        print(str(simtime) + ": instruction " + s)
+
+
+available_cores = {'simple':JTAGCore, 'silent':silentcore, 'e200z0':e200z0}
+        
 class JTAGWatcher(watcher.VcdWatcher):
     def __init__(self, hierarchy, tck, tms, tdi, tdo, initstate):
-        assert(isinstance(writer, VCDWriter))
-
         self.set_hierarchy(hierarchy)
 
         self.signame_tck = tck
@@ -29,12 +120,21 @@ class JTAGWatcher(watcher.VcdWatcher):
         self.add_watching(self.signame_tms)
         self.add_watching(self.signame_tdi)
         self.add_watching(self.signame_tdo)
+        
+        # set the default core
+        self.core = JTAGCore()
 
     def set_writer(self, writer, timescale, statevar, opvar):
+        assert isinstance(writer, VCDWriter), "The writer parameter is not a VCDWriter element"
+
         self.writer = writer
         self.statevar = statevar
         self.opvar = opvar
         self.timescale = timescale
+
+    def set_core(self, core):
+        assert isinstance(core, JTAGCore), "The core parameter is not a JTAG core element"
+        self.core = core
 
     def update_ids(self):
         # invoked when the parsing of the definitions is over
@@ -132,14 +232,11 @@ class JTAGTracker(tracker.VcdTracker):
 
     def update_dr(self):
         if self.watcher.dr_i != '':
-            print(str(self.parser.now) + ":")
-            dr_i = hex(int('0b' + self.watcher.dr_i, 0))
-            dr_o = hex(int('0b' + self.watcher.dr_o, 0))
-            print('   in : ' + self.watcher.dr_i + '(' + dr_i + ')')
-            print('   out: ' + self.watcher.dr_o + '(' + dr_o + ')')
-            s = 'in=' + dr_i + '-out=' + dr_o
+            self.watcher.core.data(self.parser.now, self.watcher.dr_i, self.watcher.dr_o)
+            s = 'in=' + self.watcher.dr_i + '-out=' + self.watcher.dr_o
         else:
             # this can happen in the path: dr-scan -> capture-dr -> exit1-dr -> update-dr
+            self.watcher.core.data_null(self.parser.now)
             s = 'in=NULL-out=NULL'
         self.watcher.writer.change(self.watcher.opvar, self.parser.now, s)
 
@@ -192,13 +289,13 @@ class JTAGTracker(tracker.VcdTracker):
 
     def update_ir(self):
         if self.watcher.ir_i != '':
-            ir = int('0b' + self.watcher.ir_i, 0)
-            s = 'ir=' + self.watcher.ir_i + '(' + hex(ir) + ')'
+            self.watcher.core.instruction(self.parser.now, self.watcher.ir_i)
+            s = 'ir=' + self.watcher.ir_i
         else:
             # this can happen in the path: ir-scan -> capture-ir -> exit1-ir -> update-ir
+            self.watcher.core.instruction_null(self.parser.now)
             s = 'ir=NULL'
         self.watcher.writer.change(self.watcher.opvar, self.parser.now, s)
-        print(str(self.parser.now) + ': ' + s)
 
         tms = int(self.values[self.watcher.id_tms])
         if tms == 1:
@@ -231,8 +328,12 @@ argparser.add_argument('--inscope', default='capture',
     help='scope of the jtag signals in the input file')
 argparser.add_argument('--outscope', default='parsed',
     help='scope of the parsed information in the output file')
+argparser.add_argument('--core', choices=available_cores.keys(), default='simple',
+    help='scope of the parsed information in the output file')
 
 my_args = argparser.parse_args()
+
+core = available_cores[my_args.core]()
 
 vcd = parser.VcdParser()
 
@@ -242,6 +343,7 @@ with VCDWriter(my_args.outfile, timescale=my_args.timescale, date='today') as wr
 
     w = JTAGWatcher(my_args.inscope, my_args.tck, my_args.tms, my_args.tdi, my_args.tdo, my_args.initstate)
     w.set_writer(writer, my_args.timescale, tapstate_v, jtag_v)
+    w.set_core(core)
     w.set_tracker(JTAGTracker)
     vcd.register_watcher(w)
 
