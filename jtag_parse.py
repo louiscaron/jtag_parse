@@ -18,42 +18,47 @@ class JTAGCore(object):
     def __init__(self):
         pass
 
-    def instruction(self, simtime, irbits):
-        ir = int('0b' + irbits, 0)
-        s = 'ir=' + irbits + '(' + hex(ir) + ')'
+    def instruction(self, simtime, iribits, irobits):
+        ir_i = int('0b' + iribits, 0)
+        ir_o = int('0b' + irobits, 0)
+        s = 'ir_i=' + iribits + '(' + hex(ir_i) + ')' + ' ir_o=' + irobits + '(' + hex(ir_o) + ')'
         print(str(simtime) + ": instruction " + s)
 
     def instruction_null(self, simtime):
         print(str(simtime) + ": instruction NULL")
 
     def data(self, simtime, dribits, drobits):
-        print(str(simtime) + ": data")
+        print(str(simtime) + ": data " + str(len(dribits))+"bits")
         dr_i = hex(int('0b' + dribits, 0))
         dr_o = hex(int('0b' + drobits, 0))
         print('   in : ' + dribits + '(' + dr_i + ')')
         print('   out: ' + drobits + '(' + dr_o + ')')
-    
+
     def data_null(self, simtime):
         print(str(simtime) + ": data NULL")
 
 class silentcore(JTAGCore):
-    def instruction(self, simtime, irbits):
+    def instruction(self, simtime, iribits, irobits):
         pass
-    
+
     def instruction_null(self, simtime):
         pass
-    
+
     def data(self, simtime, dribits, drobits):
         pass
-    
+
     def data_null(self, simtime):
         pass
 
 class e200z0(JTAGCore):
-    def instruction(self, simtime, irbits):
-        ir = int('0b' + irbits, 0)
-        s = 'ir=' + irbits + '(' + hex(ir) + ')'
-        
+    def instruction(self, simtime, iribits, irobits):
+        if len(iribits) < 10:
+            print(str(simtime) + ': short instruction ' + str(len(iribits)) + 'bits ' + iribits)
+            return
+
+        ir = int('0b' + iribits, 0)
+        s = 'ir=' + iribits + '(' + hex(ir) + ')'
+
         if ir & (1 << 9):
             s += ' R-'
         else:
@@ -105,7 +110,7 @@ class e200z0(JTAGCore):
 
 
 available_cores = {'simple':JTAGCore, 'silent':silentcore, 'e200z0':e200z0}
-        
+
 class JTAGWatcher(watcher.VcdWatcher):
     def __init__(self, hierarchy, tck, tms, tdi, tdo, initstate):
         self.set_hierarchy(hierarchy)
@@ -120,7 +125,7 @@ class JTAGWatcher(watcher.VcdWatcher):
         self.add_watching(self.signame_tms)
         self.add_watching(self.signame_tdi)
         self.add_watching(self.signame_tdo)
-        
+
         # set the default core
         self.core = JTAGCore()
 
@@ -257,6 +262,7 @@ class JTAGTracker(tracker.VcdTracker):
     def capture_ir(self):
         tms = int(self.values[self.watcher.id_tms])
         self.watcher.ir_i = ''
+        self.watcher.ir_o = ''
         if tms == 1:
             self.watcher.curstate = 'exit1_ir'
         else:
@@ -265,6 +271,7 @@ class JTAGTracker(tracker.VcdTracker):
     def shift_ir(self):
         tms = int(self.values[self.watcher.id_tms])
         self.watcher.ir_i += self.values[self.watcher.id_tdi]
+        self.watcher.ir_o += self.values[self.watcher.id_tdo]
         if tms == 1:
             self.watcher.curstate = 'exit1_ir'
 
@@ -289,8 +296,8 @@ class JTAGTracker(tracker.VcdTracker):
 
     def update_ir(self):
         if self.watcher.ir_i != '':
-            self.watcher.core.instruction(self.parser.now, self.watcher.ir_i)
-            s = 'ir=' + self.watcher.ir_i
+            self.watcher.core.instruction(self.parser.now, self.watcher.ir_i, self.watcher.ir_o)
+            s = 'ir_i=' + self.watcher.ir_i + '-ir_o=' + self.watcher.ir_o
         else:
             # this can happen in the path: ir-scan -> capture-ir -> exit1-ir -> update-ir
             self.watcher.core.instruction_null(self.parser.now)
