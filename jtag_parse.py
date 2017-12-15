@@ -64,6 +64,11 @@ class silentcore(JTAGCore):
 class e200z0(JTAGCore):
     def __init__(self, watcher):
         JTAGCore.__init__(self, watcher)
+        assert hasattr(self.watcher, 'writer'), 'Core was created before the writer was added to the watcher'
+
+        # add a variable for this core
+        self.corevar = self.watcher.writer.register_var('e200z0', 'core', 'string', init='unknown')
+        self.opvar = self.watcher.writer.register_var('e200z0', 'operation', 'string', init='unknown')
 
     def defaultdata(self, simtime, dribits, drobits):
         JTAGCore.data(self, simtime, dribits, drobits)
@@ -71,10 +76,22 @@ class e200z0(JTAGCore):
     def defaultdata_null(self, simtime):
         JTAGCore.data_null(self, simtime)
 
+    def JTAGIDreaddata(self, simtime, dribits, drobits):
+        l = len(drobits)
+        assert l == 32, "JTAG ID not 32 bits"
+        jtagid = int('0b'+drobits[::-1], 0)
+        s = "JTAGIDread:"
+        s += "manuf="+hex((jtagid >> 1) & 0x7FF)
+        s += "-sn="+hex((jtagid >> 12) & 0x3FF)
+        s += "-center="+hex((jtagid >> 22) & 0x3F)
+        s += "-version="+hex((jtagid >> 28) & 0xF)
+        print(s)
+        self.watcher.writer.change(self.opvar, simtime, s)
+
     def CPUSCRreaddata(self, simtime, dribits, drobits):
         l = len(dribits)
         assert (l & 0x1F) == 0
-        print ("CPUSCRreaddata len="+str(len(dribits)))
+        print ("CPUSCRread len="+str(len(dribits)))
 
         # register chain
         regs = ['CTL', 'IR', 'PC', 'MSR', 'WBBRhi', 'WBBRlo']
@@ -84,13 +101,14 @@ class e200z0(JTAGCore):
         for idx, b in enumerate(a[::-1]):
             print('  - {}(r) = '.format(regs[len(regs) - len(a) + idx]) + b)
 
-        s = "CPUSCRreaddata"
-        self.watcher.writer.change(self.watcher.corevar, simtime, s)
+        s = "CPUSCRread"
+        self.watcher.writer.change(self.corevar, simtime, s)
+        self.watcher.writer.change(self.opvar, simtime, s)
 
     def CPUSCRwritedata(self, simtime, dribits, drobits):
         l = len(dribits)
         assert (l & 0x1F) == 0
-        print("CPUSCRwritedata len="+str(len(dribits)))
+        print("CPUSCRwrite len="+str(len(dribits)))
 
         # register chain
         regs = ['CTL', 'IR', 'PC', 'MSR', 'WBBRhi', 'WBBRlo']
@@ -105,8 +123,9 @@ class e200z0(JTAGCore):
         for idx, b in enumerate(a[::-1]):
             print('  - {}(r) = '.format(regs[len(regs) - len(a) + idx]) + b)
 
-        s = "CPUSCRwritedata"
-        self.watcher.writer.change(self.watcher.corevar, simtime, s)
+        s = "CPUSCRwrite"
+        self.watcher.writer.change(self.corevar, simtime, s)
+        self.watcher.writer.change(self.opvar, simtime, s)
 
     def instruction(self, simtime, iribits, irobits):
         self.data = self.defaultdata
@@ -118,7 +137,8 @@ class e200z0(JTAGCore):
         if len(iribits) != 10:
             s = 'BADLEN-iri=' + iribits + '-iro=' + irobits
             print(str(simtime) + ': BADLEN instruction ' + str(len(iribits)) + 'bits iri=' + iribits + ' iro=' + irobits)
-            self.watcher.writer.change(self.watcher.corevar, simtime, s)
+            self.watcher.writer.change(self.corevar, simtime, s)
+            self.watcher.writer.change(self.opvar, simtime, s)
             return
 
         # check the format is correct
@@ -142,6 +162,8 @@ class e200z0(JTAGCore):
                 s += 'EX-'
         if rs == 2:
             s += 'JTAGID'
+            assert rw == '1', "Access to JTAD in write at "+ str(simtime)
+            self.data = self.JTAGIDreaddata
         elif rs == 0x10:
             s += 'CPUSCR'
             if rw == '1':
@@ -209,7 +231,7 @@ class e200z0(JTAGCore):
 
         print(str(simtime) + ": instruction " + s)
 
-        self.watcher.writer.change(self.watcher.corevar, simtime, s)
+        self.watcher.writer.change(self.corevar, simtime, s)
 
 
 
@@ -233,13 +255,12 @@ class JTAGWatcher(watcher.VcdWatcher):
         # set the default core
         self.core = JTAGCore(self)
 
-    def set_writer(self, writer, timescale, statevar, opvar, corevar):
+    def set_writer(self, writer, timescale, statevar, opvar):
         assert isinstance(writer, VCDWriter), "The writer parameter is not a VCDWriter element"
 
         self.writer = writer
         self.statevar = statevar
         self.opvar = opvar
-        self.corevar = corevar
         self.timescale = timescale
 
     def set_core(self, core):
@@ -450,12 +471,10 @@ vcd = parser.VcdParser()
 with VCDWriter(my_args.outfile, timescale=my_args.timescale, date='today') as writer:
     tapstate_v = writer.register_var(my_args.outscope, 'tap_state', 'string', init=my_args.initstate)
     jtag_v = writer.register_var(my_args.outscope, 'jtag', 'string', init=my_args.initstate)
-    core_v = writer.register_var(my_args.outscope, 'core', 'string', init='unknown')
 
     w = JTAGWatcher(my_args.inscope, my_args.tck, my_args.tms, my_args.tdi, my_args.tdo, my_args.initstate)
-    core = available_cores[my_args.core](w)
-    w.set_writer(writer, my_args.timescale, tapstate_v, jtag_v, core_v)
-    w.set_core(core)
+    w.set_writer(writer, my_args.timescale, tapstate_v, jtag_v)
+    w.set_core(available_cores[my_args.core](w))
     w.set_tracker(JTAGTracker)
     vcd.register_watcher(w)
 
