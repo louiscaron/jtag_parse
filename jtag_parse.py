@@ -131,9 +131,9 @@ class e200z0(JTAGCore):
 
         s = 'OCMD='
         if rw == '1':
-            s = 'R-'
+            s += 'R-'
         else:
-            s = 'W-'
+            s += 'W-'
         if go == '1' and rs in (0x10, 0x11):
             s += 'GO-'
 
