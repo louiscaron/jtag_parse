@@ -20,6 +20,11 @@ class JTAGCore(object):
         self.watcher = watcher
 
     def instruction(self, simtime, iribits, irobits):
+        '''Called at the update_ir sampling time.
+        iribits contains the string of bits sampled on TDI, 
+        the first char contains the oldest sample, 
+        the last char contains the latest sample
+        irobits contains the string of bits sampled on TDO'''
         ir_i = int('0b' + iribits, 0)
         ir_o = int('0b' + irobits, 0)
         s = 'ir_i=' + iribits + '(' + hex(ir_i) + ')' + ' ir_o=' + irobits + '(' + hex(ir_o) + ')'
@@ -53,23 +58,32 @@ class silentcore(JTAGCore):
 
 class e200z0(JTAGCore):
     def instruction(self, simtime, iribits, irobits):
-        if len(iribits) < 10:
-            print(str(simtime) + ': short instruction ' + str(len(iribits)) + 'bits ' + iribits)
-            return
-
         ir_i = int('0b' + iribits, 0)
         ir_o = int('0b' + irobits, 0)
+
+        if len(iribits) != 10:
+            s = 'BADLEN-iri=' + iribits + '-iro=' + irobits
+            print(str(simtime) + ': BADLEN instruction ' + str(len(iribits)) + 'bits iri=' + iribits + ' iro=' + irobits)
+            self.watcher.writer.change(self.watcher.corevar, simtime, s)
+            return
+        
+        # check the format is correct
+        assert irobits[0:2] == '10', 'OnCE status register not compliant: ' + irobits
+
+        rw = iribits[9]
+        go = iribits[8]
+        ex = iribits[7]
+        rs = int('0b' + iribits[7::-1],0)
         s = 'iri=' + iribits + '(' + hex(ir_i) + ')'
 
-        if ir_i & (1 << 9):
+        if rw == '1':
             s += 'R-'
         else:
             s += 'W-'
-        if ir_i & (1 << 8):
+        if go == '1':
             s += 'GO-'
-        if ir_i & (1 << 7):
+        if ex == '1':
             s += 'EX-'
-        rs = ir_i & 0x7F
         if rs == 2:
             s += 'JTAGID'
         elif rs == 0x10:
