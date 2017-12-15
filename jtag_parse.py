@@ -72,9 +72,17 @@ class e200z0(JTAGCore):
         JTAGCore.data_null(self, simtime)
 
     def CPUSCRreaddata(self, simtime, dribits, drobits):
-        assert (len(dribits) & 0x1F) == 0
+        l = len(dribits)
+        assert (l & 0x1F) == 0
         print ("CPUSCRreaddata len="+str(len(dribits)))
 
+        # register chain
+        regs = ['CTL', 'IR', 'PC', 'MSR', 'WBBRhi', 'WBBRlo']
+        # 32 first bits -> WBBRlo
+        # 32 next -> WBBRhi etc...
+        a = [drobits[i: i + 32] for i in range(0, l, 32)]
+        for idx, b in enumerate(a[::-1]):
+            print('  - {}(r) = '.format(regs[len(regs) - len(a) + idx]) + b)
 
         s = "CPUSCRreaddata"
         self.watcher.writer.change(self.watcher.corevar, simtime, s)
