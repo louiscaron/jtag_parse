@@ -15,8 +15,9 @@ tap_states = ['test_logic_reset','run_test_idle', 'select_dr_scan','capture_dr',
 
 class JTAGCore(object):
     '''Base class for JTAG core objects'''
-    def __init__(self):
-        pass
+    def __init__(self, watcher):
+        assert isinstance(watcher, JTAGWatcher), "watcher parameter is not expected type"
+        self.watcher = watcher
 
     def instruction(self, simtime, iribits, irobits):
         ir_i = int('0b' + iribits, 0)
@@ -56,18 +57,19 @@ class e200z0(JTAGCore):
             print(str(simtime) + ': short instruction ' + str(len(iribits)) + 'bits ' + iribits)
             return
 
-        ir = int('0b' + iribits, 0)
-        s = 'ir=' + iribits + '(' + hex(ir) + ')'
+        ir_i = int('0b' + iribits, 0)
+        ir_o = int('0b' + irobits, 0)
+        s = 'iri=' + iribits + '(' + hex(ir_i) + ')'
 
-        if ir & (1 << 9):
-            s += ' R-'
+        if ir_i & (1 << 9):
+            s += 'R-'
         else:
-            s += ' W-'
-        if ir & (1 << 8):
+            s += 'W-'
+        if ir_i & (1 << 8):
             s += 'GO-'
-        if ir & (1 << 7):
+        if ir_i & (1 << 7):
             s += 'EX-'
-        rs = ir & 0x7F
+        rs = ir_i & 0x7F
         if rs == 2:
             s += 'JTAGID'
         elif rs == 0x10:
@@ -105,8 +107,31 @@ class e200z0(JTAGCore):
         elif rs == 0x7C:
             s += 'NEXUSACC'
         else:
-            s += '!!!! unsupported {}'.format(rs)
+            s += '!!!!unsupported"{}"'.format(rs)
+
+        s += '-iro=' + irobits + '(' + hex(ir_o) + ')'
+        if ir_o & (1 << 0):
+            s += 'MCLKa'
+        else:
+            s += 'MCLKi'
+        if ir_o & (1 << 1):
+            s += '-ERR'
+        if ir_o & (1 << 2):
+            s += '-CHKSTOP'
+        if ir_o & (1 << 3):
+            s += '-RESET'
+        if ir_o & (1 << 4):
+            s += '-HALT'
+        if ir_o & (1 << 5):
+            s += '-STOP'
+        if ir_o & (1 << 6):
+            s += '-DEBUG'
+        if ir_o & (1 << 7):
+            s += '-WAIT'
+
         print(str(simtime) + ": instruction " + s)
+
+        self.watcher.writer.change(self.watcher.corevar, simtime, s)
 
 
 available_cores = {'simple':JTAGCore, 'silent':silentcore, 'e200z0':e200z0}
@@ -127,14 +152,15 @@ class JTAGWatcher(watcher.VcdWatcher):
         self.add_watching(self.signame_tdo)
 
         # set the default core
-        self.core = JTAGCore()
+        self.core = JTAGCore(self)
 
-    def set_writer(self, writer, timescale, statevar, opvar):
+    def set_writer(self, writer, timescale, statevar, opvar, corevar):
         assert isinstance(writer, VCDWriter), "The writer parameter is not a VCDWriter element"
 
         self.writer = writer
         self.statevar = statevar
         self.opvar = opvar
+        self.corevar = corevar
         self.timescale = timescale
 
     def set_core(self, core):
@@ -340,16 +366,16 @@ argparser.add_argument('--core', choices=available_cores.keys(), default='simple
 
 my_args = argparser.parse_args()
 
-core = available_cores[my_args.core]()
-
 vcd = parser.VcdParser()
 
 with VCDWriter(my_args.outfile, timescale=my_args.timescale, date='today') as writer:
     tapstate_v = writer.register_var(my_args.outscope, 'tap_state', 'string', init=my_args.initstate)
     jtag_v = writer.register_var(my_args.outscope, 'jtag', 'string', init=my_args.initstate)
+    core_v = writer.register_var(my_args.outscope, 'core', 'string', init='unknown')
 
     w = JTAGWatcher(my_args.inscope, my_args.tck, my_args.tms, my_args.tdi, my_args.tdo, my_args.initstate)
-    w.set_writer(writer, my_args.timescale, tapstate_v, jtag_v)
+    core = available_cores[my_args.core](w)
+    w.set_writer(writer, my_args.timescale, tapstate_v, jtag_v, core_v)
     w.set_core(core)
     w.set_tracker(JTAGTracker)
     vcd.register_watcher(w)
