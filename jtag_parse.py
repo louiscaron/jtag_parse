@@ -233,8 +233,6 @@ class e200z0(JTAGCore):
 
         self.watcher.writer.change(self.corevar, simtime, s)
 
-
-
 available_cores = {'simple':JTAGCore, 'silent':silentcore, 'e200z0':e200z0}
 
 class JTAGWatcher(watcher.VcdWatcher):
@@ -257,8 +255,8 @@ class JTAGWatcher(watcher.VcdWatcher):
 
     def __getattribute__(self, name):
         # in order to speed up some of the __getattribute__
-        if name in ['get_sensitive_ids','get_watching_ids','notify','_sensitive_ids','values','activity','update','parser','manage_trackers',
-                    'writer','core','statevar', 'opvar','curstate','id_tck','id_tms', 'id_tdi', 'id_tdo', 'trackers', 'dr_i', 'dr_o']:
+        if name in ['get_sensitive_ids','get_watching_ids','notify','_sensitive_ids','values','activity','update','parser','manage_trackers','start_tracker',
+                    'writer','core','statevar', 'opvar','curstate','id_tck','id_tms', 'id_tdi', 'id_tdo', 'trackers', 'dr_i', 'dr_o', 'ir_i', 'ir_o']:
             return object.__getattribute__(self, name)
 
         return watcher.VcdWatcher.__getattribute__(self, name)
