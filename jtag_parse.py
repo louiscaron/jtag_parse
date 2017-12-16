@@ -307,7 +307,8 @@ class JTAGWatcher(watcher.VcdWatcher):
 
 class JTAGTracker(tracker.VcdTracker):
     def __getattribute__(self, name):
-        if name in ['watcher','values','']:
+        if name in ['trigger_count','watcher','parser','values','notify','select_ir_scan','finished','update',
+                    'run_test_idle','shift_ir', 'shift_dr']:
             return object.__getattribute__(self, name)
 
         return tracker.VcdTracker.__getattribute__(self, name)
