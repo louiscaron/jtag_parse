@@ -255,6 +255,12 @@ class JTAGWatcher(watcher.VcdWatcher):
         # set the default core
         self.core = JTAGCore(self)
 
+    def __getattribute__(self, name):
+        # in order to speed up some of the __getattribute__
+        if name in ['writer', 'statevar', 'opvar', 'curstate', 'parser', 'id_tck', 'id_tms', 'id_tdi', 'id_tdo', 'activity', 'manage_trackers', 'trackers', 'values']:
+            return object.__getattribute__(self, name)
+        return watcher.VcdWatcher.__getattribute__(self, name)
+
     def set_writer(self, writer, timescale, statevar, opvar):
         assert isinstance(writer, VCDWriter), "The writer parameter is not a VCDWriter element"
 
@@ -285,16 +291,18 @@ class JTAGWatcher(watcher.VcdWatcher):
         # Doing effective posedge/ negedge checks here and reset/ clock behaviour filtering
 
         # Only update on rising clock edge (clock has changed and is 1)
-        if self.id_tck in self.activity and self.get_active_2val(self.signame_tck):
-            self.manage_trackers()
+        if self.id_tck in self.activity:
+            tck = self.activity[self.id_tck]
+            if tck == '1':
+                self.manage_trackers()
 
     def start_tracker(self):
-        # extract once for all the TMS ID
-        self.id_tms = self.get_id(self.signame_tms)
-        self.id_tdi = self.get_id(self.signame_tdi)
-        self.id_tdo = self.get_id(self.signame_tdo)
         # only one istance of the tracker at once
         if not len(self.trackers):
+            # extract once for all the TMS ID
+            self.id_tms = self.get_id(self.signame_tms)
+            self.id_tdi = self.get_id(self.signame_tdi)
+            self.id_tdo = self.get_id(self.signame_tdo)
             return True
 
 class JTAGTracker(tracker.VcdTracker):
