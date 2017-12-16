@@ -253,14 +253,6 @@ class JTAGWatcher(watcher.VcdWatcher):
         # set the default core
         self.core = JTAGCore(self)
 
-    def __getattribute__(self, name):
-        # in order to speed up some of the __getattribute__
-        if name in ['get_sensitive_ids','get_watching_ids','notify','_sensitive_ids','values','activity','update','parser','manage_trackers','start_tracker',
-                    'writer','core','statevar', 'opvar','curstate','id_tck','id_tms', 'id_tdi', 'id_tdo', 'trackers', 'dr_i', 'dr_o', 'ir_i', 'ir_o']:
-            return object.__getattribute__(self, name)
-
-        return watcher.VcdWatcher.__getattribute__(self, name)
-
     def set_writer(self, writer, timescale, statevar, opvar):
         assert isinstance(writer, VCDWriter), "The writer parameter is not a VCDWriter element"
 
@@ -306,12 +298,6 @@ class JTAGWatcher(watcher.VcdWatcher):
             return True
 
 class JTAGTracker(tracker.VcdTracker):
-    def __getattribute__(self, name):
-        if name in ['trigger_count','watcher','parser','values','notify','select_ir_scan','finished','update',
-                    'run_test_idle','shift_ir', 'shift_dr']:
-            return object.__getattribute__(self, name)
-
-        return tracker.VcdTracker.__getattribute__(self, name)
 
     def start(self):
         # called at the creation of the tracker

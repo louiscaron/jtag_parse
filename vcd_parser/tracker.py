@@ -49,16 +49,6 @@ class VcdTracker(object):
         pass
 
 
-    def __getattribute__(self, name):
-
-        if name == 'watcher':
-            return object.__getattribute__(self, name)
-
-        id = self.watcher.get_id(name) 
-        if id:
-            return self.values[id]
-        else:
-            return object.__getattribute__(self, name)
 
 
     def notify(self, activity, values):

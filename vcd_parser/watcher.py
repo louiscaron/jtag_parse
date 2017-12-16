@@ -139,18 +139,6 @@ class VcdWatcher(object):
 			return None
 
 
-	def __getattribute__(self, name):
-
-		if name in ['get_id', 'default_hierarchy', '_watching_ids']:
-			return object.__getattribute__(self, name)
-
-		id = self.get_id(name)
-		if id:
-			return self.values[id]
-		else:
-			return object.__getattribute__(self, name)
-
-
 	def get2val(self, signal):
 		'''Attempt to convert a scalar to a numerical 0/1 value'''
 		id = self.get_id(signal)
