@@ -69,12 +69,24 @@ class e200z0(JTAGCore):
         # add a variable for this core
         self.corevar = self.watcher.writer.register_var('e200z0', 'core', 'string', init='unknown')
         self.opvar = self.watcher.writer.register_var('e200z0', 'operation', 'string', init='unknown')
+        self.statvar = self.watcher.writer.register_var('e200z0', 'status', 'string', init='unknown')
+        self.warnvar = self.watcher.writer.register_var('e200z0', 'warning', 'wire', size=1, init=0)
 
     def defaultdata(self, simtime, dribits, drobits):
+        self.watcher.writer.change(self.warnvar, simtime, 1)
         JTAGCore.data(self, simtime, dribits, drobits)
 
     def defaultdata_null(self, simtime):
+        self.watcher.writer.change(self.warnvar, simtime, 1)
         JTAGCore.data_null(self, simtime)
+
+    def baddata(self, simtime, dribits, drobits):
+        print ("!!! executing bad len instruction at "+str(simtime))
+        self.watcher.writer.change(self.warnvar, simtime, 1)
+
+    def baddata_null(self, simtime):
+        print ("!!! executing bad len instruction at "+str(simtime))
+        self.watcher.writer.change(self.warnvar, simtime, 1)
 
     def JTAGIDreaddata(self, simtime, dribits, drobits):
         l = len(drobits)
@@ -138,8 +150,11 @@ class e200z0(JTAGCore):
             s = 'BADLEN-iri=' + iribits + '-iro=' + irobits
             print(str(simtime) + ': BADLEN instruction ' + str(len(iribits)) + 'bits iri=' + iribits + ' iro=' + irobits)
             self.watcher.writer.change(self.corevar, simtime, s)
-            self.watcher.writer.change(self.opvar, simtime, s)
+
+            self.watcher.writer.change(self.warnvar, simtime, 1)
             return
+
+        self.watcher.writer.change(self.warnvar, simtime, 0)
 
         # check the format is correct
         assert irobits[0:2] == '10', 'OnCE status register not compliant: ' + irobits
@@ -209,29 +224,31 @@ class e200z0(JTAGCore):
         else:
             s += '!!!!{}'.format(rs)
 
-        s += '-OSR='
         if ir_o & (1 << 0):
-            s += 'MCLKa'
+            osr = 'MCLKa'
         else:
-            s += 'MCLKi'
+            osr = 'MCLKi'
         if ir_o & (1 << 1):
-            s += '-ERR'
+            osr += '-ERR'
         if ir_o & (1 << 2):
-            s += '-CHKSTOP'
+            osr += '-CHKosrOP'
         if ir_o & (1 << 3):
-            s += '-RESET'
+            osr += '-RESET'
         if ir_o & (1 << 4):
-            s += '-HALT'
+            osr += '-HALT'
         if ir_o & (1 << 5):
-            s += '-STOP'
+            osr += '-STOP'
         if ir_o & (1 << 6):
-            s += '-DEBUG'
+            osr += '-DEBUG'
         if ir_o & (1 << 7):
-            s += '-WAIT'
+            osr += '-WAIT'
 
+        s += '-OSR=' + osr
         print(str(simtime) + ": instruction " + s)
-
         self.watcher.writer.change(self.corevar, simtime, s)
+
+        # this was just a status read until execution
+        self.watcher.writer.change(self.statvar, simtime, osr)
 
 available_cores = {'simple':JTAGCore, 'silent':silentcore, 'e200z0':e200z0}
 
