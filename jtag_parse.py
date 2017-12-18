@@ -100,6 +100,14 @@ class e200z0(JTAGCore):
         print(s)
         self.watcher.writer.change(self.opvar, simtime, s)
 
+    def DBSRreaddata(self, simtime, dribits, drobits):
+        s = "R-DBSR"
+        self.watcher.writer.change(self.opvar, simtime, s)
+
+    def DBSRreaddata_null(self, simtime, dribits, drobits):
+        print ("!!! empty reading of DBSR "+str(simtime))
+        self.watcher.writer.change(self.warnvar, simtime, 1)
+
     def CPUSCRreaddata(self, simtime, dribits, drobits):
         l = len(dribits)
         assert (l & 0x1F) == 0
@@ -177,7 +185,7 @@ class e200z0(JTAGCore):
                 s += 'EX-'
         if rs == 2:
             s += 'JTAGID'
-            assert rw == '1', "Access to JTAD in write at "+ str(simtime)
+            assert rw == '1', "Forbidden write access to JTAG ID register at "+ str(simtime)
             self.data = self.JTAGIDreaddata
         elif rs == 0x10:
             s += 'CPUSCR'
@@ -205,6 +213,9 @@ class e200z0(JTAGCore):
             s += 'DBCNT'
         elif rs == 0x30:
             s += 'DBSR'
+            assert rw == '1', "Forbidden write access to DBSR register at "+ str(simtime)
+            self.data = self.DBSRreaddata
+            self.data_null = self.DBSRreaddata_null
         elif rs == 0x31:
             s += 'DBCR0'
         elif rs == 0x32:
