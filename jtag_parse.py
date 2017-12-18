@@ -100,11 +100,19 @@ class e200z0(JTAGCore):
         print(s)
         self.watcher.writer.change(self.opvar, simtime, s)
 
+    def NRSBYPASSdata(self, simtime, dribits, drobits):
+        s = "NRSBYPASS"
+        self.watcher.writer.change(self.opvar, simtime, s)
+
+    def NRSBYPASSdata_null(self, simtime):
+        s = "NRSBYPASS"
+        self.watcher.writer.change(self.opvar, simtime, s)
+
     def DBSRreaddata(self, simtime, dribits, drobits):
         s = "R-DBSR"
         self.watcher.writer.change(self.opvar, simtime, s)
 
-    def DBSRreaddata_null(self, simtime, dribits, drobits):
+    def DBSRreaddata_null(self, simtime):
         print ("!!! empty reading of DBSR "+str(simtime))
         self.watcher.writer.change(self.warnvar, simtime, 1)
 
@@ -173,13 +181,14 @@ class e200z0(JTAGCore):
         rs = int('0b' + iribits[7::-1],0)
 
         s = 'OCMD='
-        if rw == '1':
-            s += 'R-'
-        else:
-            s += 'W-'
+        # rw is ignored in NRSBYPASS
+        if rs not in (0x11, ):
+            if rw == '1':
+                s += 'R-'
+            else:
+                s += 'W-'
         if go == '1' and rs in (0x10, 0x11):
             s += 'GO-'
-
             # EX is executed only if GO is valid
             if ex == '1':
                 s += 'EX-'
@@ -195,6 +204,8 @@ class e200z0(JTAGCore):
                 self.data = self.CPUSCRwritedata
         elif rs == 0x11:
             s += 'NRSBYPASS'
+            self.data = self.NRSBYPASSdata
+            self.data_null = self.NRSBYPASSdata_null
         elif rs == 0x12:
             s += 'OCR'
         elif rs == 0x20:
