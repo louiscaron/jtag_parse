@@ -25,8 +25,8 @@ class JTAGCore(object):
         the first char contains the oldest sample,
         the last char contains the latest sample
         irobits contains the string of bits sampled on TDO'''
-        ir_i = int('0b' + iribits, 0)
-        ir_o = int('0b' + irobits, 0)
+        ir_i = int(iribits, 2)
+        ir_o = int(irobits, 2)
         s = 'ir_i=' + iribits + '(' + hex(ir_i) + ')' + ' ir_o=' + irobits + '(' + hex(ir_o) + ')'
         print(str(simtime) + ": instruction " + s)
 
@@ -40,8 +40,8 @@ class JTAGCore(object):
         the last char contains the latest sample
         drobits contains the string of bits sampled on TDO'''
         print(str(simtime) + ": data " + str(len(dribits))+"bits")
-        dr_i = hex(int('0b' + dribits, 0))
-        dr_o = hex(int('0b' + drobits, 0))
+        dr_i = hex(int(dribits, 2))
+        dr_o = hex(int(drobits, 2))
         print('   in : ' + dribits + '(' + dr_i + ')')
         print('   out: ' + drobits + '(' + dr_o + ')')
 
@@ -72,6 +72,13 @@ class e200z0(JTAGCore):
         self.statvar = self.watcher.writer.register_var('e200z0', 'status', 'string', init='unknown')
         self.warnvar = self.watcher.writer.register_var('e200z0', 'warning', 'wire', size=1, init=0)
 
+        self.gobit = False
+        self.exbit = False
+        self.ctl = 0
+        self.ir = 0
+        self.pc = 0
+        self.msr = 0
+
     def defaultdata(self, simtime, dribits, drobits):
         self.watcher.writer.change(self.warnvar, simtime, 1)
         JTAGCore.data(self, simtime, dribits, drobits)
@@ -91,7 +98,7 @@ class e200z0(JTAGCore):
     def JTAGIDreaddata(self, simtime, dribits, drobits):
         l = len(drobits)
         assert l == 32, "JTAG ID not 32 bits"
-        jtagid = int('0b'+drobits[::-1], 0)
+        jtagid = int(drobits[::-1], 2)
         s = "JTAGIDread:"
         s += "manuf="+hex((jtagid >> 1) & 0x7FF)
         s += "-sn="+hex((jtagid >> 12) & 0x3FF)
@@ -101,19 +108,19 @@ class e200z0(JTAGCore):
         self.watcher.writer.change(self.opvar, simtime, s)
 
     def NRSBYPASSdata(self, simtime, dribits, drobits):
-        s = "NRSBYPASS"
+        s = 'NRSBYPASS(' + str(len(dribits)) + ')'
         self.watcher.writer.change(self.opvar, simtime, s)
 
     def NRSBYPASSdata_null(self, simtime):
-        s = "NRSBYPASS"
+        s = 'NRSBYPASS(0)'
         self.watcher.writer.change(self.opvar, simtime, s)
 
     def DBSRreaddata(self, simtime, dribits, drobits):
-        s = "R-DBSR"
+        s = 'R-DBSR(' + str(len(dribits)) + ')'
         self.watcher.writer.change(self.opvar, simtime, s)
 
     def DBSRreaddata_null(self, simtime):
-        print ("!!! empty reading of DBSR "+str(simtime))
+        print ('!!! empty reading of DBSR '+str(simtime))
         self.watcher.writer.change(self.warnvar, simtime, 1)
 
     def CPUSCRreaddata(self, simtime, dribits, drobits):
@@ -129,7 +136,7 @@ class e200z0(JTAGCore):
         for idx, b in enumerate(a[::-1]):
             print('  - {}(r) = '.format(regs[len(regs) - len(a) + idx]) + b)
 
-        s = "CPUSCRread"
+        s = 'CPUSCRread(' + str(len(dribits)) + ')'
         self.watcher.writer.change(self.corevar, simtime, s)
         self.watcher.writer.change(self.opvar, simtime, s)
 
@@ -145,13 +152,35 @@ class e200z0(JTAGCore):
         a = [dribits[i: i + 32] for i in range(0, l, 32)[::-1]]
         for idx, b in enumerate(a):
             print('  - {}(w) = '.format(regs[idx]) + b)
+            if idx == 0:
+                self.ctl = int(b, 2)
+            elif idx == 1:
+                self.ir = int(b[::-1], 2)
+            elif idx == 2:
+                self.pc = int(b, 2)
+            elif idx == 3:
+                self.msr = int(b, 2)
+            elif idx == 4:
+                self.wbbrhi = int(b[::-1], 2)
+            elif idx == 5:
+                self.wbbrlo = int(b[::-1], 2)
+
+        if self.gobit:
+            ins = {0x1bffd000: 'e_ori r31, wbbrlo({:08x}), 0x0000',
+                   0x37fe0000: 'e_stb r31, 0(wbbrlo({:08x}))',
+                   0x53fe0000: 'e_lwz r31, 0(wbbrlo({:08x}))'}
+            try:
+                print('Executing: ' + ins[self.ir].format(self.wbbrlo))
+            except KeyError:
+                print('!!!Unknown instruction: ' + hex(self.ir))
+                self.watcher.writer.change(self.warnvar, simtime, 1)
         # 32 first bits -> WBBRlo
         # 32 next -> WBBRhi etc...
         a = [drobits[i: i + 32] for i in range(0, l, 32)]
         for idx, b in enumerate(a[::-1]):
             print('  - {}(r) = '.format(regs[len(regs) - len(a) + idx]) + b)
 
-        s = "CPUSCRwrite"
+        s = 'CPUSCRwrite(' + str(len(dribits)) + ')'
         self.watcher.writer.change(self.corevar, simtime, s)
         self.watcher.writer.change(self.opvar, simtime, s)
 
@@ -159,8 +188,8 @@ class e200z0(JTAGCore):
         self.data = self.defaultdata
         self.data_null = self.defaultdata_null
 
-        ir_i = int('0b' + iribits, 0)
-        ir_o = int('0b' + irobits, 0)
+        ir_i = int(iribits, 2)
+        ir_o = int(irobits, 2)
 
         if len(iribits) != 10:
             s = 'BADLEN-iri=' + iribits + '-iro=' + irobits
@@ -178,7 +207,7 @@ class e200z0(JTAGCore):
         rw = iribits[9]
         go = iribits[8]
         ex = iribits[7]
-        rs = int('0b' + iribits[7::-1],0)
+        rs = int(iribits[7::-1], 2)
 
         s = 'OCMD='
         # rw is ignored in NRSBYPASS
@@ -189,9 +218,16 @@ class e200z0(JTAGCore):
                 s += 'W-'
         if go == '1' and rs in (0x10, 0x11):
             s += 'GO-'
+            self.gobit = True
             # EX is executed only if GO is valid
             if ex == '1':
+                self.exbit = True
                 s += 'EX-'
+            else:
+                self.exbit = False
+        else:
+            self.gobit = False
+            self.exbit = False
         if rs == 2:
             s += 'JTAGID'
             assert rw == '1', "Forbidden write access to JTAG ID register at "+ str(simtime)
