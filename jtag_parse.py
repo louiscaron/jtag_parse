@@ -153,27 +153,110 @@ class e200z0(JTAGCore):
         for idx, b in enumerate(a):
             print('  - {}(w) = '.format(regs[idx]) + b)
             if idx == 0:
-                self.ctl = int(b, 2)
+                self.ctl = int(b[::-1], 2)
             elif idx == 1:
                 self.ir = int(b[::-1], 2)
             elif idx == 2:
-                self.pc = int(b, 2)
+                self.pc = int(b[::-1], 2)
             elif idx == 3:
-                self.msr = int(b, 2)
+                self.msr = int(b[::-1], 2)
             elif idx == 4:
                 self.wbbrhi = int(b[::-1], 2)
             elif idx == 5:
                 self.wbbrlo = int(b[::-1], 2)
 
         if self.gobit:
-            ins = {0x1bffd000: 'e_ori r31, wbbrlo({:08x}), 0x0000',
-                   0x37fe0000: 'e_stb r31, 0(wbbrlo({:08x}))',
-                   0x53fe0000: 'e_lwz r31, 0(wbbrlo({:08x}))'}
-            try:
-                print('Executing: ' + ins[self.ir].format(self.wbbrlo))
-            except KeyError:
+            ffra = (self.ctl >> 10) & 1
+            pcinv = (self.ctl >> 11) & 1
+            pcofst = (self.ctl >> 12) & 0xF
+
+            def twos_comp(val, bits):
+                """compute the 2's complement of int value val"""
+                if (val & (1 << (bits - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
+                    val = val - (1 << bits)        # compute negative value
+                return val
+
+            def se_lbz():
+                pass
+
+            def sd4_form(ir, func):
+                pass
+
+            def se_bc(bo16, bi16, bd8):
+                return 'se_bc ' + str(bo16) + ',' + str(bi16) + ',' + '+' + str(twos_comp(bd8 << 2, 9))
+
+            def bd8_bo16_form(ir, func):
+                bo16 = (ir >> 26) & 1
+                bi16 = (ir >> 24) & 3
+                bd8  = (ir >> 16) & 0xFF
+                return func(bo16, bi16, bd8)
+
+            def e_ori(rs, ra, rc, sci8):
+                s = 'ori'
+                if rc:
+                    s += '.'
+                s += ' ' + ', '.join((ra, rs, str(sci8)))
+                return s
+
+            def sci8_rc_form(ir, func):
+                rs = (ir >> 21) & 0x1F
+                ra = (ir >> 16) & 0x1F
+                rc  = (ir >> 11) & 1
+                f = (ir >> 10) & 1
+                scl = (ir >> 8) & 3
+                ui8 = (ir >> 0) & 0xFF
+                sci8 = 0
+                if f == 1:
+                    sci8 = 2**64 - 1
+                    sci8 &= ~(0xFF << (scl * 8))
+                sci8 |= ui8 << (scl * 8)
+                ra = 'r' + str(ra)
+                if ffra:
+                    rs = 'wbbrlo({:08x})'.format(self.wbbrlo)
+                else:
+                    rs = 'r' + str(rs)
+                return func(rs, ra, rc, sci8)
+
+            def e_stb(rs, ra, d):
+                return 'e_stb ' + rs + ', ' + str(d) + '(' + ra + ')'
+
+            def e_lwz(rs, ra, d):
+                return 'e_lwz ' + rs + ', ' + str(d) + '(' + ra + ')'
+
+            def d_form(ir, func):
+                rs = (ir >> 21) & 0x1F
+                ra = (ir >> 16) & 0x1F
+                d = (ir >> 0) & 0xFFFF
+                d = twos_comp(d, 16)
+                rs = 'r' + str(rs)
+                if ffra:
+                    ra = 'wbbrlo({:08x})'.format(self.wbbrlo)
+                else:
+                    ra = 'r' + str(ra)
+                return func(rs, ra, d)
+
+            F0000000 = {0x80000000: (sd4_form, se_lbz)}
+            F8000000 = {0xE0000000: (bd8_bo16_form, se_bc)}
+            FC000000 = {0x34000000: (d_form, e_stb), 0x50000000: (d_form, e_lwz)}
+            FC00F000 = {0x1800D000: (sci8_rc_form, e_ori)}
+
+            filters = [(0xF0000000, F0000000), (0xF8000000, F8000000), (0xFC000000, FC000000), (0xFC00F000, FC00F000)]
+
+            s = ''
+            for m, f in filters:
+                try:
+                    (form, func) = f[self.ir & m]
+                    s = form(self.ir, func)
+                    break
+                except KeyError:
+                    pass
+
+            if s != '':
+                print('Executing: ' + s)
+            else:
                 print('!!!Unknown instruction: ' + hex(self.ir))
                 self.watcher.writer.change(self.warnvar, simtime, 1)
+
         # 32 first bits -> WBBRlo
         # 32 next -> WBBRhi etc...
         a = [drobits[i: i + 32] for i in range(0, l, 32)]
