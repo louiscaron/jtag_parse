@@ -235,12 +235,29 @@ class e200z0(JTAGCore):
                     ra = 'r' + str(ra)
                 return func(rs, ra, d)
 
-            F0000000 = {0x80000000: (sd4_form, se_lbz)}
-            F8000000 = {0xE0000000: (bd8_bo16_form, se_bc)}
-            FC000000 = {0x34000000: (d_form, e_stb), 0x50000000: (d_form, e_lwz)}
-            FC00F000 = {0x1800D000: (sci8_rc_form, e_ori)}
+            def mtcrf(rs, fxm):
+                assert (fxm & 0x200) == 0, 'The mtcrf 11th bit is not 0 : ' + hex(fxm)
+                fxm = fxm >> 1
+                return 'mtcrf ' + hex(fxm & 0x1FF) + ', ' + rs
 
-            filters = [(0xF0000000, F0000000), (0xF8000000, F8000000), (0xFC000000, FC000000), (0xFC00F000, FC00F000)]
+            def xfx_form(ir, func):
+                rt = 'r' + str((ir >> 21) & 0x1F)
+                spr = (ir >> 11) & 0x3FF
+                return func(rt, spr)
+
+            xF0000000 = {0x80000000: (sd4_form, se_lbz)}
+            xF8000000 = {0xE0000000: (bd8_bo16_form, se_bc)}
+            xFC000000 = {0x34000000: (d_form, e_stb), 0x50000000: (d_form, e_lwz)}
+            xFC00F000 = {0x1800D000: (sci8_rc_form, e_ori)}
+            xFC0007FE = {0x7C000120: (xfx_form, mtcrf)}
+
+
+            filters = [(0xF0000000, xF0000000),
+                       (0xF8000000, xF8000000),
+                       (0xFC000000, xFC000000),
+                       (0xFC00F000, xFC00F000),
+                       (0xFC0007FE, xFC0007FE),
+                       ]
 
             s = ''
             for m, f in filters:
@@ -252,7 +269,7 @@ class e200z0(JTAGCore):
                     pass
 
             if s != '':
-                print('Executing: ' + s)
+                print('Executing ' + hex(self.ir) + ' : ' + s)
             else:
                 print('!!!Unknown instruction: ' + hex(self.ir))
                 self.watcher.writer.change(self.warnvar, simtime, 1)
