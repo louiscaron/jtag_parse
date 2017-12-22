@@ -123,18 +123,28 @@ class e200z0(JTAGCore):
         print ('!!! empty reading of DBSR '+str(simtime))
         self.watcher.writer.change(self.warnvar, simtime, 1)
 
+    def CPUSCRread(self, simtime, drobits):
+        l = len(drobits)
+        # register chain
+        regs = ['CTL', 'IR', 'PC', 'MSR', 'WBBRhi', 'WBBRlo']
+        # 32 oldest bits = drobits[0:32] -> WBBRlo
+        # 32 next   bits = drobits[32:64] -> WBBRhi etc...
+        a = [drobits[i: i + 32] for i in range(0, l, 32)]
+        # display in the order of the regs, so revert the array
+        for idx, b in enumerate(a[::-1]):
+            negoffset = idx - len(a)
+            print('  - {}(r) = '.format(regs[negoffset]) + b)
+            if negoffset == -1:
+                wbrrlo = int(b[::-1], 2)
+
+        print('Result of last instruction: ' + hex(wbrrlo))
+
     def CPUSCRreaddata(self, simtime, dribits, drobits):
         l = len(dribits)
         assert (l & 0x1F) == 0
         print ("CPUSCRread len="+str(len(dribits)))
 
-        # register chain
-        regs = ['CTL', 'IR', 'PC', 'MSR', 'WBBRhi', 'WBBRlo']
-        # 32 first bits -> WBBRlo
-        # 32 next -> WBBRhi etc...
-        a = [drobits[i: i + 32] for i in range(0, l, 32)]
-        for idx, b in enumerate(a[::-1]):
-            print('  - {}(r) = '.format(regs[len(regs) - len(a) + idx]) + b)
+        self.CPUSCRread(simtime, drobits)
 
         s = 'CPUSCRread(' + str(len(dribits)) + ')'
         self.watcher.writer.change(self.corevar, simtime, s)
@@ -145,10 +155,13 @@ class e200z0(JTAGCore):
         assert (l & 0x1F) == 0
         print("CPUSCRwrite len="+str(len(dribits)))
 
+        # decrypt the data read out first
+        self.CPUSCRread(simtime, drobits)
+
         # register chain
         regs = ['CTL', 'IR', 'PC', 'MSR', 'WBBRhi', 'WBBRlo']
-        # 32 last bits -> CTL
-        # 32 previous last -> IR etc...
+        # 32 earliest bits = dribits[l-32:l] -> CTL
+        # 32 previous bits = dribits[l-64:l-32] -> IR etc...
         a = [dribits[i: i + 32] for i in range(0, l, 32)[::-1]]
         for idx, b in enumerate(a):
             print('  - {}(w) = '.format(regs[idx]) + b)
@@ -273,12 +286,6 @@ class e200z0(JTAGCore):
             else:
                 print('!!!Unknown instruction: ' + hex(self.ir))
                 self.watcher.writer.change(self.warnvar, simtime, 1)
-
-        # 32 first bits -> WBBRlo
-        # 32 next -> WBBRhi etc...
-        a = [drobits[i: i + 32] for i in range(0, l, 32)]
-        for idx, b in enumerate(a[::-1]):
-            print('  - {}(r) = '.format(regs[len(regs) - len(a) + idx]) + b)
 
         s = 'CPUSCRwrite(' + str(len(dribits)) + ')'
         self.watcher.writer.change(self.corevar, simtime, s)
